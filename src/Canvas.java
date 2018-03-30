@@ -18,9 +18,14 @@ import java.awt.image.RenderedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.imageio.ImageIO;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
+import javax.persistence.Persistence;
 import javax.swing.JComponent;
 import javax.swing.event.MouseInputAdapter;
 import org.apache.batik.dom.GenericDOMImplementation;
@@ -39,7 +44,9 @@ public class Canvas extends JComponent {
 
     
     
-    
+     EntityManagerFactory emf = Persistence.createEntityManagerFactory("SwingPaint2PU");
+    EntityManager em = emf.createEntityManager();
+    EntityTransaction tx = em.getTransaction();
     
     
     
@@ -58,8 +65,11 @@ public class Canvas extends JComponent {
 	private Point startPoint;
 	private MouseMotionListener motion;
 	private MouseListener listener;
-        
-        List<String> svg = new ArrayList<>();
+        String svg;
+        Coordinaat cd ;
+        List<Coordinaat> coordinaten;
+         List<String> lst ;
+       //List<String> svg = new ArrayList<>();
 	public void save(File file) {
 		try {
 			ImageIO.write((RenderedImage) img, "PNG", file);
@@ -132,8 +142,10 @@ public class Canvas extends JComponent {
 
 	public Canvas() {
 		setBackground(Color.WHITE);
-              
+             cd = new Coordinaat();
+            lst = new ArrayList();
 		defaultListener();
+                getData();
 	}
     
         
@@ -169,7 +181,7 @@ public class Canvas extends JComponent {
 
 		Graphics2D g2d = (Graphics2D) img.getGraphics();
 		g2d.setColor(color);
-		//g2d.draw(rectangle);
+		g2d.draw(rectangle);
                 
                 
                 
@@ -211,6 +223,7 @@ public class Canvas extends JComponent {
 
 	public void pink() {
 		g.setPaint(Color.PINK);
+               
 	}
 
 	public void cyan() {
@@ -255,7 +268,7 @@ public class Canvas extends JComponent {
 	public void pencil() {
 		removeMouseListener(listener);
 		removeMouseMotionListener(motion);
-		defaultListener();
+		//defaultListener();
 		
 	}
 
@@ -324,19 +337,32 @@ public class Canvas extends JComponent {
 
 		public void mouseDragged(MouseEvent e)
 		{
-			 x = Math.min(startPoint.x, e.getX());
-			 y = Math.min(startPoint.y, e.getY());
-			 width = Math.abs(startPoint.x - e.getX());
-			 height = Math.abs(startPoint.y - e.getY());
-
-			shape.setBounds(x, y, width, height);
-                        int tt = getX1();
-                 
                     
-                    String svg = "<svg width='1500'"+" height='1500' >"+ 
-                            "< rect width='"+getWidth1()+"'"+" height='"+ getHeight1() + " x='"+getX1()+"'" + "y='"+ getY1()+"'" + "/>"+
-                             "</svg>";
+                    
+                   x =  Math.min(startPoint.x, e.getX());
+			 
+                   y =       Math.min(startPoint.y, e.getY());
+			 
+                   width =       Math.abs(startPoint.x - e.getX());
+			 
+                   height =      Math.abs(startPoint.y - e.getY());
+			
+
+                    shape.setBounds(x, y, width, height);
+                        
+                 
+                    Graphics2D g2d = (Graphics2D) img.getGraphics();
+                  //  svg = 
+                  
+                    
+                    
+                    g2d.fillRect( x,  y, width, height);
+                    g2d.setColor(Color.BLUE);
 			repaint();
+                     
+                       
+                        
+                        
 		}
 
 		public void mouseReleased(MouseEvent e)
@@ -344,32 +370,89 @@ public class Canvas extends JComponent {
 			if (shape.width != 0 || shape.height != 0)
 			{
 				addRectangle(shape, e.getComponent().getForeground());
+                              //  coordinaten = new ArrayList<>();
+                               // coordinaten.add(cd);
+                               
 			}
 
 			shape = null;
+                        repaint();
+                         opslaan();  
 		}
 	}
+public void opslaan(){
+    if (!em.isOpen()) {
+            em = emf.createEntityManager();
+        }
+    cd.setX1( x);
+    
+    cd.setY1 ( y );
+    
+    cd.setWidth1( width);
+    
+    cd.setHeight1( height);
+      em.getTransaction().begin();
+                        
+                        try {
+                // em.detach(stage);
+                em.merge(cd);
+                em.getTransaction().commit();
+                
+               
+            } catch (Exception ex) {
+                em.getTransaction().rollback();
+            } finally {
+                em.close();
+            } 
+}
+   public void getData(){
+       if (!em.isOpen()) {
+            em = emf.createEntityManager();
+        }
+     
+       coordinaten = new ArrayList<>();
+      List<Coordinaat> coordinaten =  (List<Coordinaat>) em.createQuery("SELECT t FROM Coordinaat t ").getResultList();
+     
+      
+         for (Coordinaat cd:coordinaten) {
+            
+             svg =   "<svg width='1500'"+" height='1500' >"+
+                     "< rect width='"+cd.getWidth1()+"'"+" height='"+ cd.getHeight1() + " x='"+cd.getX1()+"'" + "y='"+ cd.getY1()+"'" + "/>"+
+                     "</svg>";
+             
+            
+             lst.add(svg);
+         }
+       
+      
+   }
 
-   
+//       public int getX1() {
+//        return x;
+//    }
+//
+//    public int getY1() {
+//        return y;
+//    }
+//
+//    public int getWidth1() {
+//        return width;
+//    }
+//
+//    public int getHeight1() {
+//        return height;
+//    }
 
-       public int getX1() {
-        return x;
-    }
+//    public List<String> getSvg() {
+//        return svg;
+//    }
 
-    public int getY1() {
-        return y;
-    }
+//    public String getSvg() {
+//        return svg;
+//    }
 
-    public int getWidth1() {
-        return width;
-    }
-
-    public int getHeight1() {
-        return height;
-    }
-
-    public List<String> getSvg() {
-        return svg;
+    public List<String> getLst() {
+        return lst;
     }
 
 }
